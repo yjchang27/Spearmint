@@ -1,0 +1,21 @@
+# submit description file
+# ${submit_filename} -- ${experiment_name}
+
+universe        = vanilla
+log             = ${log_filename}
+error           = ${error_filename}
+
+executable      = ${executable_path}
+initialdir      = ${experiment_dir}
+output          = ${output_filename}
+
+should_transfer_files       = IF_NEEDED
+when_to_transfer_output     = ON_EXIT
+# transfer_input_files        = file1, etc.
+
+# Explicitly request for the computing resources
+request_cpus                = 1
+request_memory              = 50MB
+request_disk                = 50MB
+
+queue
