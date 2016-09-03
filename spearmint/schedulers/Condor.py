@@ -192,17 +192,14 @@ import spearmint
 import subprocess
 import sys
 
-from abc import ABCMeta, abstractmethod
+from abstract_scheduler import AbstractScheduler
 from string import Template
 
 def init(*args, **kwargs):
     return CondorScheduler(*args, **kwargs)
 
-class CondorScheduler(object):
-    __metaclass__ = ABCMeta
-
-    def __init__(self, options):
-        self.options = options
+class CondorScheduler(AbstractScheduler):
+    """scheduler which submits jobs to the htcondor via a shell command"""
 
     def submit(self, job_id, experiment_name, experiment_dir, database_address):
         base_path = os.path.dirname(os.path.realpath(spearmint.__file__))
@@ -282,9 +279,6 @@ class CondorScheduler(object):
 
 
     def alive(self, cluster_id):
-
         schedd = htcondor.Schedd()
         result_ads = schedd.query('ClusterId =?= %d' % cluster_id)
-
         return len(result_ads) > 0
-
