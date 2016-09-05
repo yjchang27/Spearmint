@@ -187,6 +187,7 @@ import htcondor
 import os
 import re
 import shlex
+import shutil
 import socket
 import spearmint
 import subprocess
@@ -203,12 +204,24 @@ class CondorScheduler(AbstractScheduler):
 
     def submit(self, job_id, experiment_name, experiment_dir, database_address):
         base_path = os.path.dirname(os.path.realpath(spearmint.__file__))
+
         run_command = '#!/bin/bash\n'
         if 'environment-file' in self.options:
             run_command += 'source %s\n' % self.options['environment-file']
         run_command += 'cd %s\n' % base_path
         run_command += 'python launcher.py --database-address=%s --experiment-name=%s --job-id=%s %s\n' % \
                (database_address, experiment_name, job_id, experiment_dir)
+
+        # remove executables after execution
+        run_command += '\n# Delete executables\n'
+        run_command += 'FILE_NAME=$(basename "$0")\n'
+        run_command += 'DIR_PATH=$(cd $(dirname "$0") && pwd -P)\n'
+        run_command += 'JOB_NAME=$(echo $FILE_NAME | cut -f 1 -d ".")\n\n'
+        run_command += 'rm $DIR_PATH/$JOB_NAME.sub\n'
+        run_command += 'rm $DIR_PATH/$FILE_NAME\n'
+
+        if 'scheduler-args' in self.options:
+            warn("HTCondor does not support scheduler-args")
 
         # Since "localhost" might mean something different on the machine
         # we are submitting to, set it to the actual name of the parent machine
@@ -228,20 +241,29 @@ class CondorScheduler(AbstractScheduler):
         error_filename  = os.path.join(output_directory, '%08d.err' % job_id)
         log_filename    = os.path.join(output_directory, '%08d.log' % job_id)
 
-        if 'scheduler-args' in self.options:
-            warn("HTCondor does not support scheduler-args")
+        # build temp directory
+        temp_dir = os.path.join(experiment_dir, '.tempSubFiles')
+        if not os.path.isdir(temp_dir):
+            os.mkdir(temp_dir)
 
         # build executable
-        executable = '%s.sh' % experiment_name
-        executable_path = os.path.join(experiment_dir, executable)
+        executable = '%s_%08d.sh' % (experiment_name, job_id)
+        executable_path = os.path.join(temp_dir, executable)
         with open(executable_path, 'w') as f:
            f.write(run_command)
         st = os.stat(executable_path)
         os.chmod(executable_path, st.st_mode | 0o111)
 
+        # prepare template (copy template into expr_dir if not given)
+        template_path = os.path.join(experiment_dir, '%s.sub.template' % experiment_name)
+        if not os.path.isfile(template_path):
+            sample_template_path = \
+                os.path.join(os.path.join(base_path, 'schedulers'), 'condor.sub.template')
+            shutil.copyfile(sample_template_path, template_path)
+
         # build submit file
-        submit_filename = '%s.sub' % experiment_name
-        submit_filepath = os.path.join(experiment_dir, submit_filename)
+        submit_filename = '%s_%08d.sub' % (experiment_name, job_id)
+        submit_filepath = os.path.join(temp_dir, submit_filename)
         with open(submit_filepath, 'w') as f:
             replace_dict = {
                 'error_filename': error_filename,
@@ -254,8 +276,7 @@ class CondorScheduler(AbstractScheduler):
                 'run_command': run_command,
                 'submit_filename': submit_filename,
             }
-            with open(os.path.join(os.path.join(base_path, 'schedulers'),
-                'condor.sub.template'), 'r') as template_file:
+            with open(template_path, 'r') as template_file:
                 template = Template(template_file.read())
             submit_file_content = template.substitute(replace_dict)
             f.write(submit_file_content)
