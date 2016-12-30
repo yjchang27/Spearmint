@@ -6,12 +6,12 @@
         "my-machine" : {
             "scheduler"         : "local",
             "max-concurrent"    : 1,
-            "max-finished-jobs" : 100
+            "max-finished-jobs" : 10
         },
         "cluster" : {
-            "scheduler"         : "SLURM",
-            "max-concurrent"    : 3,
-            "max-finished-jobs" : 1000
+            "scheduler"         : "Condor",
+            "max-concurrent"    : 20,
+            "max-finished-jobs" : 50
         }
     },
     "tasks": {

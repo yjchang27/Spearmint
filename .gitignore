@@ -9,5 +9,7 @@
 *.pdf
 *.py~
 
-
-
+.tempSubFiles
+*.sub.template
+output
+spearmint.egg-info
