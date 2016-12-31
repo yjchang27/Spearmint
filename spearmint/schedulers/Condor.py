@@ -210,7 +210,9 @@ class CondorScheduler(AbstractScheduler):
         if database_address == 'localhost':
             database_address = socket.gethostname()
 
-	python_location = '/home/ugrd_yjchang/anaconda2/bin/python'
+        python_location = sys.executable
+        if python_location is None:
+	    python_location = '/home/ugrd_yjchang/anaconda2/bin/python'
 
         run_command = '#!/bin/bash\n'
         if 'environment-file' in self.options:
